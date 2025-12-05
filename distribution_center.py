@@ -434,15 +434,36 @@ def search_package_ui(manager: PackageManager):
         print(f"❌ Package with barcode {barcode} not found!")
 
 
+#def update_status_ui(manager: PackageManager):
+    #"""User interface for status update."""
+    #print("\n--- UPDATE PACKAGE STATUS ---")
+    #barcode = input("Enter barcode: ").strip()
+    #print("\nAvailable statuses: Received, Stored, In Transit, Delivered")
+    #new_status = input("Enter new status: ").strip()
+    
+    #manager.update_package_status(barcode, new_status)
 def update_status_ui(manager: PackageManager):
     """User interface for status update."""
     print("\n--- UPDATE PACKAGE STATUS ---")
     barcode = input("Enter barcode: ").strip()
+    
     print("\nAvailable statuses: Received, Stored, In Transit, Delivered")
     new_status = input("Enter new status: ").strip()
     
-    manager.update_package_status(barcode, new_status)
-
+    #TESTA CASE 4
+    # --- [NUEVO] VALIDACIÓN DE ESTATUS ---
+    # Lista estricta de palabras permitidas
+    valid_statuses = ["Received", "Stored", "In Transit", "Delivered"]
+    
+    # .title() arregla mayúsculas (ej: "delivered" -> "Delivered")
+    if new_status.title() not in valid_statuses:
+        print(f"❌ Error: '{new_status}' is not a valid status.")
+        print("   Please choose from the list above.")
+        return
+    # -------------------------------------
+    
+    # Enviamos el estatus ya corregido (.title())
+    manager.update_package_status(barcode, new_status.title())
 
 def display_report(manager: PackageManager):
     """Display summary report."""
