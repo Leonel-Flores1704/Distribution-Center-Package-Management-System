@@ -194,76 +194,8 @@ class PackageManager:
         result = self.db.cursor.fetchone()
         return result[0] if result else None
     
-    def register_package(self, barcode: str, weight: float, length: float,
-                        width: float, height: float, destination: str,
-                        priority: str) -> bool:
-        """Register a new package in the system."""
-        try:
-            # Check if barcode already exists
-            self.db.cursor.execute("""
-                SELECT barcode FROM Packages WHERE barcode = ?
-            """, (barcode,))
-            
-            if self.db.cursor.fetchone():
-                print(f"❌ Error: Barcode {barcode} already exists in the system!")
-                return False
-            
-            # Categorize package
-            category_id, category_name = self.categorize_package(
-                weight, priority, destination
-            )
-            
-            # Find available location
-            location_id = self.find_available_location(category_id)
-            
-            if not location_id:
-                print(f"❌ Error: No available locations for category {category_name}")
-                return False
-            
-            # Insert package
-            self.db.cursor.execute("""
-                INSERT INTO Packages 
-                (barcode, weight, length, width, height, destination, 
-                 priority, category_id, location_id, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Stored')
-            """, (barcode, weight, length, width, height, destination, 
-                  priority, category_id, location_id))
-            
-            package_id = self.db.cursor.lastrowid
-            
-            # Mark location as occupied
-            self.db.cursor.execute("""
-                UPDATE Locations SET is_occupied = 1 
-                WHERE location_id = ?
-            """, (location_id,))
-            
-            # Get location code
-            self.db.cursor.execute("""
-                SELECT location_code FROM Locations WHERE location_id = ?
-            """, (location_id,))
-            location_code = self.db.cursor.fetchone()[0]
-            
-            # Create audit trail
-            self.db.cursor.execute("""
-                INSERT INTO AuditTrail 
-                (package_id, action, new_status, new_location, notes)
-                VALUES (?, 'REGISTERED', 'Stored', ?, ?)
-            """, (package_id, location_code, 
-                  f"Package categorized as {category_name}"))
-            
-            self.db.conn.commit()
-            
-            print(f"✅ Package registered successfully!")
-            print(f"   Barcode: {barcode}")
-            print(f"   Category: {category_name}")
-            print(f"   Location: {location_code}")
-            
-            return True
-            
-        except sqlite3.Error as e:
-            print(f"❌ Database error: {e}")
-            self.db.conn.rollback()
-            return False
+    
+        
     
     def search_package(self, barcode: str) -> Optional[dict]:
         """Search for a package by barcode."""
@@ -408,11 +340,46 @@ def display_menu():
     print("="*60)
 
 
+# def register_package_ui(manager: PackageManager):
+#     """User interface for package registration."""
+#     print("\n--- REGISTER NEW PACKAGE ---")
+    
+#     barcode = input("Enter barcode (or press Enter to generate random): ").strip()
+#     if not barcode:
+#         barcode = generate_random_barcode()
+#         print(f"Generated barcode: {barcode}")
+        
+    
+    
+#     try:
+#         weight = float(input("Enter weight (kg): "))
+#         length = float(input("Enter length (cm): "))
+#         width = float(input("Enter width (cm): "))
+#         height = float(input("Enter height (cm): "))
+#         destination = input("Enter destination: ").strip()
+#         priority = input("Enter priority (Standard/Express): ").strip() or "Standard"
+        
+#         manager.register_package(barcode, weight, length, width, height, 
+#                                 destination, priority)
+#     except ValueError:
+#         print("❌ Invalid input! Please enter valid numbers.")
+
+#TEST CASE 1
+# CON LAS VALIDACIONES SOLICITADAS
 def register_package_ui(manager: PackageManager):
     """User interface for package registration."""
+    import re  # Necesario para validar caracteres especiales
     print("\n--- REGISTER NEW PACKAGE ---")
     
     barcode = input("Enter barcode (or press Enter to generate random): ").strip()
+    
+    # --- VALIDACIÓN 1: Caracteres Especiales (Solo letras, números y guiones) ---
+    if barcode:
+        if not re.match(r'^[a-zA-Z0-9-]+$', barcode):
+            print("❌ Error: Barcode contains invalid characters (only A-Z, 0-9, -).")
+            return
+    # ----------------------------------------------------------------------------
+
     if not barcode:
         barcode = generate_random_barcode()
         print(f"Generated barcode: {barcode}")
@@ -422,7 +389,21 @@ def register_package_ui(manager: PackageManager):
         length = float(input("Enter length (cm): "))
         width = float(input("Enter width (cm): "))
         height = float(input("Enter height (cm): "))
+        
+        # --- VALIDACIÓN 2: Números Negativos o Cero ---
+        if weight <= 0 or length <= 0 or width <= 0 or height <= 0:
+            print("❌ Error: Weight and dimensions must be positive (> 0).")
+            return
+        # ----------------------------------------------
+
         destination = input("Enter destination: ").strip()
+        
+        # --- VALIDACIÓN 3: Espacios en Blanco (Destino vacío) ---
+        if not destination:
+            print("❌ Error: Destination cannot be empty.")
+            return
+        # --------------------------------------------------------
+
         priority = input("Enter priority (Standard/Express): ").strip() or "Standard"
         
         manager.register_package(barcode, weight, length, width, height, 
