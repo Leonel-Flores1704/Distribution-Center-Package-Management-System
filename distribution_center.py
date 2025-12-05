@@ -285,13 +285,26 @@ class PackageManager:
         report['by_category'] = self.db.cursor.fetchall()
         
         # Packages by status
+        #self.db.cursor.execute("""
+        #    SELECT status, COUNT(*) as count
+        #    FROM Packages
+         #   GROUP BY status
+       # """)
+       # report['by_status'] = self.db.cursor.fetchall()
+        
+# Filtramos para mostrar solo los estados válidos oficiales.
         self.db.cursor.execute("""
             SELECT status, COUNT(*) as count
             FROM Packages
+            WHERE status IN ('Received', 'Stored', 'In Transit', 'Delivered')
             GROUP BY status
         """)
-        report['by_status'] = self.db.cursor.fetchall()
         
+        report['by_status'] = self.db.cursor.fetchall()
+
+
+
+
         # Location occupancy
         self.db.cursor.execute("""
             SELECT 
